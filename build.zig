@@ -567,6 +567,15 @@ pub fn build(b: *std.Build) void {
     }
     exe.dead_strip_dylibs = true;
 
+    // ARMv5TE lacks hardware atomics (ldrex/strex require ARMv6+).
+    // Provide __sync_* builtins via Linux kernel user helpers.
+    if (target.result.cpu.arch == .arm and !std.Target.arm.featureSetHas(target.result.cpu.features, .has_v6)) {
+        exe.root_module.addCSourceFile(.{
+            .file = b.path("vendor/armv5te_atomic_shim.c"),
+            .flags = &.{"-fno-builtin"},
+        });
+    }
+
     if (optimize != .Debug) {
         exe.root_module.strip = true;
         exe.root_module.unwind_tables = .none;
